@@ -99,6 +99,11 @@ jobs:
       run: |
         pyinstaller --onefile extract_clicker_media.py
 
+    - name: Verify File Names
+      run: |
+        echo "Files in dist/:"
+        ls -l dist/
+
     - name: Upload Release Assets
       uses: actions/upload-release-asset@v1
       env:
@@ -106,5 +111,5 @@ jobs:
       with:
         upload_url: ${{ needs.versioning.outputs.upload_url }}
         asset_path: dist/extract_clicker_media${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-        asset_name: extract_clicker_media-${{ matrix.os }}
+        asset_name: ${{ matrix.os == 'windows-latest' && 'extract_clicker_media.exe' || 'extract_clicker_media' }}
         asset_content_type: application/octet-stream
