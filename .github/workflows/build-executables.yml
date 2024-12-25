@@ -8,6 +8,8 @@ on:
 jobs:
   versioning:
     runs-on: macos-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -102,7 +104,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.MY_PAT }}
       with:
-        upload_url: ${{ needs.versioning.outputs.create_release.upload_url }}
+        upload_url: ${{ needs.versioning.outputs.upload_url }}
         asset_path: dist/extract_clicker_media${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         asset_name: extract_clicker_media-${{ matrix.os }}
         asset_content_type: application/octet-stream
