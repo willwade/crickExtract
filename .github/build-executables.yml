@@ -1,0 +1,103 @@
+name: Build and Release Executables
+
+on:
+  push:
+    tags:
+      - "v*"  # Triggers when a tag starting with "v" (e.g., v1.0.0) is pushed
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile extract_clicker_media.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: executable-${{ matrix.os }}
+        path: dist/extract_clicker_media*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: executable-ubuntu-latest
+        path: ubuntu
+      if: matrix.os == 'ubuntu-latest'
+
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: executable-windows-latest
+        path: windows
+      if: matrix.os == 'windows-latest'
+
+    - name: Download macOS artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: executable-macos-latest
+        path: macos
+      if: matrix.os == 'macos-latest'
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ubuntu/extract_clicker_media
+        asset_name: extract_clicker_media-ubuntu
+        asset_content_type: application/octet-stream
+      if: matrix.os == 'ubuntu-latest'
+
+    - name: Upload Windows Release Asset
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: windows/extract_clicker_media.exe
+        asset_name: extract_clicker_media-windows.exe
+        asset_content_type: application/octet-stream
+      if: matrix.os == 'windows-latest'
+
+    - name: Upload macOS Release Asset
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: macos/extract_clicker_media
+        asset_name: extract_clicker_media-macos
+        asset_content_type: application/octet-stream
+      if: matrix.os == 'macos-latest'
