@@ -2,14 +2,15 @@ name: Build and Release Executables
 
 on:
   push:
-    tags:
-      - "v*"  # Triggers when a tag starting with "v" (e.g., v1.0.0) is pushed
+    branches:
+      - main  # Trigger on commits to the main branch
 
 jobs:
-  build:
+  build-and-release:
+    if: contains(github.event.head_commit.message, 'MAJOR') || contains(github.event.head_commit.message, 'MINOR') || contains(github.event.head_commit.message, 'PATCH')
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]  # Only build on Windows and macOS
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -26,43 +27,48 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Build executable
+    - name: Determine Version
+      id: version
+      run: |
+        if echo "${{ github.event.head_commit.message }}" | grep -q 'MAJOR'; then
+          echo "version_type=MAJOR" >> $GITHUB_ENV
+        elif echo "${{ github.event.head_commit.message }}" | grep -q 'MINOR'; then
+          echo "version_type=MINOR" >> $GITHUB_ENV
+        elif echo "${{ github.event.head_commit.message }}" | grep -q 'PATCH'; then
+          echo "version_type=PATCH" >> $GITHUB_ENV
+        else
+          echo "No valid version type found in commit message."
+          exit 1
+
+    - name: Increment Version
+      id: increment_version
+      run: |
+        version=$(cat VERSION || echo "0.0.0")
+        major=$(echo $version | cut -d. -f1)
+        minor=$(echo $version | cut -d. -f2)
+        patch=$(echo $version | cut -d. -f3)
+
+        case "${{ env.version_type }}" in
+          MAJOR) major=$((major + 1)); minor=0; patch=0 ;;
+          MINOR) minor=$((minor + 1)); patch=0 ;;
+          PATCH) patch=$((patch + 1)) ;;
+        esac
+
+        new_version="${major}.${minor}.${patch}"
+        echo "new_version=${new_version}" >> $GITHUB_ENV
+        echo $new_version > VERSION
+
+    - name: Commit New Version
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add VERSION
+        git commit -m "Bump version to ${{ env.new_version }}"
+        git push
+
+    - name: Build Executable
       run: |
         pyinstaller --onefile extract_clicker_media.py
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: executable-${{ matrix.os }}
-        path: dist/extract_clicker_media*
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: executable-ubuntu-latest
-        path: ubuntu
-      if: matrix.os == 'ubuntu-latest'
-
-    - name: Download Windows artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: executable-windows-latest
-        path: windows
-      if: matrix.os == 'windows-latest'
-
-    - name: Download macOS artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: executable-macos-latest
-        path: macos
-      if: matrix.os == 'macos-latest'
 
     - name: Create Release
       id: create_release
@@ -70,8 +76,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
+        tag_name: v${{ env.new_version }}
+        release_name: Release v${{ env.new_version }}
         draft: false
         prerelease: false
 
@@ -79,25 +85,6 @@ jobs:
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ubuntu/extract_clicker_media
-        asset_name: extract_clicker_media-ubuntu
+        asset_path: dist/extract_clicker_media.exe
+        asset_name: extract_clicker_media-${{ matrix.os }}
         asset_content_type: application/octet-stream
-      if: matrix.os == 'ubuntu-latest'
-
-    - name: Upload Windows Release Asset
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: windows/extract_clicker_media.exe
-        asset_name: extract_clicker_media-windows.exe
-        asset_content_type: application/octet-stream
-      if: matrix.os == 'windows-latest'
-
-    - name: Upload macOS Release Asset
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: macos/extract_clicker_media
-        asset_name: extract_clicker_media-macos
-        asset_content_type: application/octet-stream
-      if: matrix.os == 'macos-latest'
