@@ -31,11 +31,11 @@ jobs:
       id: version
       shell: bash
       run: |
-        if echo "MAJOR rework GH action script" | grep -q 'MAJOR'; then
+        if echo "${{ github.event.head_commit.message }}" | grep -q 'MAJOR'; then
             echo "version_type=MAJOR" >> $GITHUB_ENV
-        elif echo "MAJOR rework GH action script" | grep -q 'MINOR'; then
+        elif echo "${{ github.event.head_commit.message }}" | grep -q 'MINOR'; then
             echo "version_type=MINOR" >> $GITHUB_ENV
-        elif echo "MAJOR rework GH action script" | grep -q 'PATCH'; then
+        elif echo "${{ github.event.head_commit.message }}" | grep -q 'PATCH'; then
             echo "version_type=PATCH" >> $GITHUB_ENV
         else
             echo "No valid version type found in commit message."
@@ -44,6 +44,7 @@ jobs:
 
     - name: Increment Version
       id: increment_version
+      shell: bash
       run: |
         version=$(cat VERSION || echo "0.0.0")
         major=$(echo $version | cut -d. -f1)
@@ -60,13 +61,15 @@ jobs:
         echo "new_version=${new_version}" >> $GITHUB_ENV
         echo $new_version > VERSION
 
-    - name: Commit New Version
+    - name: Commit and Tag New Version
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
         git add VERSION
         git commit -m "Bump version to ${{ env.new_version }}"
-        git push
+        git tag v${{ env.new_version }}
+        git push origin main
+        git push origin v${{ env.new_version }}
 
     - name: Build Executable
       run: |
@@ -78,8 +81,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.MY_PAT }}
       with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
+        tag_name: v${{ env.new_version }}
+        release_name: Release v${{ env.new_version }}
         draft: false
         prerelease: false
 
