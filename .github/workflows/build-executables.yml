@@ -6,13 +6,8 @@ on:
       - main  # Trigger on commits to the main branch
 
 jobs:
-  build-and-release:
-    if: contains(github.event.head_commit.message, 'MAJOR') || contains(github.event.head_commit.message, 'MINOR') || contains(github.event.head_commit.message, 'PATCH')
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]  # Only build on Windows and macOS
-    runs-on: ${{ matrix.os }}
-
+  versioning:
+    runs-on: macos-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -21,11 +16,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.x"
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
 
     - name: Determine Version
       id: version
@@ -62,7 +52,6 @@ jobs:
         echo $new_version > VERSION
 
     - name: Commit and Tag New Version
-      if: matrix.os == 'macos-latest'  # Only macOS handles versioning
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
@@ -72,12 +61,7 @@ jobs:
         git push origin main
         git push origin v${{ env.new_version }}
 
-    - name: Build Executable
-      run: |
-        pyinstaller --onefile extract_clicker_media.py
-
     - name: Create Release
-      if: matrix.os == 'macos-latest'  # Only macOS creates the release
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -88,12 +72,37 @@ jobs:
         draft: false
         prerelease: false
 
+  build:
+    needs: versioning  # Ensures this job runs after versioning
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]  # Build on Windows and macOS
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build Executable
+      run: |
+        pyinstaller --onefile extract_clicker_media.py
+
     - name: Upload Release Assets
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.MY_PAT }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.versioning.outputs.create_release.upload_url }}
         asset_path: dist/extract_clicker_media${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         asset_name: extract_clicker_media-${{ matrix.os }}
         asset_content_type: application/octet-stream
