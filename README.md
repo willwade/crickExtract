@@ -31,6 +31,13 @@ A standalone script to extract embedded media (images, sounds, etc.) from `.clkx
    ```cmd
    extract_clicker_media-windows-latest.exe path\to\file.clkx
    ```
+   or 
+   ```cmd
+   extract_clicker_media-windows-latest.exe path\tp\files\*.clkx
+   ```
+
+   i.e. either a single file or multiple files can be extracted at once.
+
 5.	The extracted files will be saved in a new folder, named <filename>_extracted, in the same directory as the .clkx file.
 
 ### For macOS Users:
@@ -55,3 +62,13 @@ A standalone script to extract embedded media (images, sounds, etc.) from `.clkx
 - The script will overwrite any existing files with the same name in the extraction folder.
 - The script does not modify the original `.clkx` file.
 
+
+
+## License
+
+MIT License
+
+
+## Author
+
+Will Wade @ gmail .  com
