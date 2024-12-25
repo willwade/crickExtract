@@ -30,15 +30,16 @@ jobs:
     - name: Determine Version
       id: version
       run: |
-        if echo "${{ github.event.head_commit.message }}" | grep -q 'MAJOR'; then
-          echo "version_type=MAJOR" >> $GITHUB_ENV
-        elif echo "${{ github.event.head_commit.message }}" | grep -q 'MINOR'; then
-          echo "version_type=MINOR" >> $GITHUB_ENV
-        elif echo "${{ github.event.head_commit.message }}" | grep -q 'PATCH'; then
-          echo "version_type=PATCH" >> $GITHUB_ENV
+        if echo "MAJOR rework GH action script" | grep -q 'MAJOR'; then
+            echo "version_type=MAJOR" >> $GITHUB_ENV
+        elif echo "MAJOR rework GH action script" | grep -q 'MINOR'; then
+            echo "version_type=MINOR" >> $GITHUB_ENV
+        elif echo "MAJOR rework GH action script" | grep -q 'PATCH'; then
+            echo "version_type=PATCH" >> $GITHUB_ENV
         else
-          echo "No valid version type found in commit message."
-          exit 1
+            echo "No valid version type found in commit message."
+            exit 1
+        fi
 
     - name: Increment Version
       id: increment_version
