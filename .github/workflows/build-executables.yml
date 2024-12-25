@@ -29,6 +29,7 @@ jobs:
 
     - name: Determine Version
       id: version
+      shell: bash
       run: |
         if echo "MAJOR rework GH action script" | grep -q 'MAJOR'; then
             echo "version_type=MAJOR" >> $GITHUB_ENV
