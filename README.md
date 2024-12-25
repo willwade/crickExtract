@@ -5,4 +5,4 @@
 
  Your mileage may vary. Use at your own risk.
 
- MIT    
+ MIT    licence
